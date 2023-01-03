@@ -1,7 +1,8 @@
 """Runs AdaptiveFederated Optimization for CIFAR10/100."""
 from os import chdir
 from pathlib import Path
-
+import sys
+sys.path.append('../../')
 import flwr as fl
 import hydra
 from flwr.common.typing import Parameters

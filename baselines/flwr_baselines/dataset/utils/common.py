@@ -439,12 +439,17 @@ def create_lda_partitions(
     # Check if concentration is Inf, if so create uniform partitions
     partitions: List[XY] = [(_, _) for _ in range(num_partitions)]
     if float("inf") in concentration:
-
-        partitions = create_partitions(
-            unpartitioned_dataset=(x, y),
-            iid_fraction=1.0,
-            num_partitions=num_partitions,
-        )
+        try:
+            partitions = create_partitions(
+                unpartitioned_dataset=(x, y),
+                iid_fraction=1.0,
+                num_partitions=num_partitions,
+            )
+        except Exception as e:
+            print(f"Due to {e}, try simpler method")
+            d_idxs = np.random.permutation(len(x))
+            local_datas = np.array_split(d_idxs, num_partitions)
+            partitions = [(x[local_data], y[local_data]) for local_data in local_datas]
         dirichlet_dist = get_partitions_distributions(partitions)[0]
 
         return partitions, dirichlet_dist
