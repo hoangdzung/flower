@@ -123,7 +123,7 @@ class RayClient(fl.client.NumPyClient):
         Returns:
             [type]: Network with new set of weights.
         """
-        net = get_model(self.num_classes)
+        net = get_model(self.num_classes, self.num_channels)
         weights = parameters
         params_dict = zip(net.state_dict().keys(), weights)
         state_dict = OrderedDict(
