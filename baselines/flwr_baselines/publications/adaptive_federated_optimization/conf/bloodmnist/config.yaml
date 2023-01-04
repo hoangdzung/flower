@@ -7,7 +7,7 @@ epochs_per_round: 4
 lda_concentration: .inf
 num_clients_per_round: 10
 num_total_clients: 100
-num_rounds: 2
+num_rounds: 200
 root_dir: "./data"
 cpus_per_client: 1
 gpus_per_client: 0

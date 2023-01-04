@@ -1,13 +1,13 @@
 ---
-dataset_name: "octmnist"
-num_classes: 4
+dataset_name: "tissuemnist"
+num_classes: 8
 num_channels: 1
 batch_size: 4
 epochs_per_round: 4
 lda_concentration: .inf
 num_clients_per_round: 10
 num_total_clients: 100
-num_rounds: 2
+num_rounds: 100
 root_dir: "./data"
 cpus_per_client: 1
 gpus_per_client: 0
