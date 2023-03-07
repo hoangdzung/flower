@@ -18,7 +18,7 @@
 
 
 from typing import List, Optional, Tuple, Union
-
+import random
 import numpy as np
 from numpy.random import BitGenerator, Generator, SeedSequence
 
@@ -454,40 +454,81 @@ def create_lda_partitions(
 
         return partitions, dirichlet_dist
 
-    if concentration.size == 1:
-        concentration = np.repeat(concentration, classes.size)
-    elif concentration.size != classes.size:  # Sequence
-        raise ValueError(
-            f"The size of the provided concentration ({concentration.size}) ",
-            f"must be either 1 or equal number of classes {classes.size})",
-        )
+    # if concentration.size == 1:
+    #     concentration = np.repeat(concentration, classes.size)
+    # elif concentration.size != classes.size:  # Sequence
+    #     raise ValueError(
+    #         f"The size of the provided concentration ({concentration.size}) ",
+    #         f"must be either 1 or equal number of classes {classes.size})",
+    #     )
 
-    # Split into list of list of samples per class
-    list_samples_per_class: List[List[np.ndarray]] = split_array_at_indices(
-        x, start_indices
-    )
+    # # Split into list of list of samples per class
+    # list_samples_per_class: List[List[np.ndarray]] = split_array_at_indices(
+    #     x, start_indices
+    # )
 
-    if dirichlet_dist is None:
-        dirichlet_dist = np.random.default_rng(seed).dirichlet(
-            alpha=concentration, size=num_partitions
-        )
+    # if dirichlet_dist is None:
+    #     dirichlet_dist = np.random.default_rng(seed).dirichlet(
+    #         alpha=concentration, size=num_partitions
+    #     )
 
-    if dirichlet_dist.size != 0:
-        if dirichlet_dist.shape != (num_partitions, classes.size):
-            raise ValueError(
-                f"""The shape of the provided dirichlet distribution
-                 ({dirichlet_dist.shape}) must match the provided number
-                  of partitions and classes ({num_partitions},{classes.size})"""
-            )
+    # if dirichlet_dist.size != 0:
+    #     if dirichlet_dist.shape != (num_partitions, classes.size):
+    #         raise ValueError(
+    #             f"""The shape of the provided dirichlet distribution
+    #              ({dirichlet_dist.shape}) must match the provided number
+    #               of partitions and classes ({num_partitions},{classes.size})"""
+    #         )
 
-    # Assuming balanced distribution
-    empty_classes = classes.size * [False]
-    for partition_id in range(num_partitions):
-        partitions[partition_id], empty_classes = sample_without_replacement(
-            distribution=dirichlet_dist[partition_id].copy(),
-            list_samples=list_samples_per_class,
-            num_samples=num_samples[partition_id],
-            empty_classes=empty_classes,
-        )
+    # # Assuming balanced distribution
+    # empty_classes = classes.size * [False]
+    # for partition_id in range(num_partitions):
+    #     partitions[partition_id], empty_classes = sample_without_replacement(
+    #         distribution=dirichlet_dist[partition_id].copy(),
+    #         list_samples=list_samples_per_class,
+    #         num_samples=num_samples[partition_id],
+    #         empty_classes=empty_classes,
+    #     )
+            #     d_idxs = np.random.permutation(len(x))
+            # local_datas = np.array_split(d_idxs, num_partitions)
+            # partitions = [(x[local_data], y[local_data]) for local_data in local_datas]
 
-    return partitions, dirichlet_dist
+    skewness = min(max(0, float(concentration)),1.0)
+    K = len(classes)
+    dpairs = [[did, y[did]] for did in range(len(x))]
+    num = max(int(1.0 * K - skewness * K), 1) # each client contains only 'num' labels
+    local_datas = [[] for _ in range(num_partitions)]
+    if num == K:
+        for k in range(K):
+            # get list of ids which has label k
+            idx_k = [p[0] for p in dpairs if p[1]==k]
+            np.random.shuffle(idx_k)
+            split = np.array_split(idx_k, num_partitions)
+            for cid in range(num_partitions):
+                local_datas[cid].extend(split[cid].tolist())
+    else:
+        times = [0 for _ in range(K)]
+        contain = []
+        for i in range(num_partitions):
+            current = [i % K] # set of label appear in client i
+            times[i % K] += 1 # the total number of appearance of that label in all client
+            j = 1 # the current size of the label set
+            while (j < num):
+                ind = random.randint(0, K - 1) # get a random label
+                if (ind not in current): # if label not in current label set of the client
+                    j = j + 1 
+                    current.append(ind) # add that label to the current label set
+                    times[ind] += 1 
+            contain.append(current)
+        for k in range(K):
+            idx_k = [p[0] for p in dpairs if p[1]==k]
+            np.random.shuffle(idx_k)
+            split = np.array_split(idx_k, times[k])
+            ids = 0
+            # distribute subset of ids w.r.t the label to all clients having that label
+            for cid in range(num_partitions):
+                if k in contain[cid]:
+                    local_datas[cid].extend(split[ids].tolist())
+                    ids += 1
+    partitions = [(x[local_data], y[local_data]) for local_data in local_datas]
+    return partitions, None
